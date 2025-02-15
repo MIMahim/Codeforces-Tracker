@@ -65,6 +65,14 @@
             cursor: pointer;
         }
 
+        a {
+            color: white;
+            text-decoration: none; /* Remove underline */
+        }
+
+        a:hover {
+            text-decoration: underline; /* Optional: Add underline on hover */
+        }
     </style>
     <script defer src="script.js"></script>
 </head>
@@ -165,15 +173,15 @@
             let tableBody = "";
             const fetchPromises = usersData.map(async (user, i) => {
                 const userInfo = users[i];
-                const [totalSolved, recentSolved] = await Promise.all([
-                    fetchTotalSolved(user.handle),
-                    fetchRecentSolved(user.handle)
+                const [totalSolved, recentSolved] = await Promise.all([ 
+                    fetchTotalSolved(user.handle), 
+                    fetchRecentSolved(user.handle) 
                 ]);
 
                 tableBody += `
                     <tr>
                         <td>${userInfo.name}</td>
-                        <td>${user.handle}</td>
+                        <td><a href="https://codeforces.com/profile/${user.handle}" target="_blank">${user.handle}</a></td>
                         <td>${user.rating}</td>
                         <td>${totalSolved}</td>
                         <td>${recentSolved}</td>
