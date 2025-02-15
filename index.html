@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codeforces Tracker</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #0A192F;  /* Dark Blue */
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1, h2 {
+            color: #64FFDA;  /* Light Cyan */
+            font-family: 'Arial', sans-serif;
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #112240; /* Darker Blue */
+            box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1);
+        }
+
+        th, td { 
+            border: 1px solid #233554; 
+            padding: 12px;
+            text-align: center; 
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #2563EB; /* Bright Blue */
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #1C2D50;
+        }
+
+        tr:nth-child(odd) {
+            background-color: #112240;
+        }
+
+        tr:hover {
+            background-color: #334E68;
+            cursor: pointer;
+        }
+
+    </style>
+    <script defer src="script.js"></script>
+</head>
+<body>
+
+    <h1>Cadet sp25</h1>
+    <h2>Codeforces Live Tracker</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Handle</th>
+                <th>Current Rating</th>
+                <th>Total Solved</th>
+                <th>Solved (Last 7 Days)</th>
+            </tr>
+        </thead>
+        <tbody id="userTable"></tbody>
+    </table>
+
+    <script>
+        const users = [
+            {name: "Mohammad Sadman Shahriar Shawon", id: "C243196", handle: "Mahim17"},
+            {name: "Tafhimur Rahman Samin", id: "C243172", handle: "JR_Riyad"},
+            {name: "MD SAYEED ABRAR AQIL", id: "C243067", handle: "TANIM67"},
+            {name: "Shahrier Mahmud", id: "C243027", handle: "TANIM67"},
+            {name: "Sudipta Banik", id: "C243098", handle: "Mahim17"},
+            {name: "Salman Samir", id: "C241259", handle: "Mahim17"},
+            {name: "Abdullah Al Sidrat Ratul", id: "C243125", handle: "Mahim17"},
+            {name: "Muntasir Uddin", id: "C243089", handle: "Mahim17"},
+            {name: "Mohammad Tayeef", id: "C251025", handle: "Mahim17"},
+            {name: "Ilhum Ul Houque Chowdhury", id: "C241229", handle: "Mahim17"},
+            {name: "Md Arif Ur Rahaman", id: "C243013", handle: "Mahim17"},
+            {name: "SUMIT BARUA", id: "C243065", handle: "Mahim17"}
+        ];
+
+        const API_BASE = "https://codeforces.com/api/user.info?handles=";
+        const SUBMISSIONS_API = "https://codeforces.com/api/user.status?handle=";
+
+        async function fetchUserData() {
+            try {
+                const response = await fetch(API_BASE + users.map(user => user.handle).join(";"));
+                const data = await response.json();
+                return data.result;
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+                return [];
+            }
+        }
+
+        async function fetchTotalSolved(handle) {
+            try {
+                const response = await fetch(SUBMISSIONS_API + handle);
+                const data = await response.json();
+                
+                const solvedProblems = new Set();
+                data.result.forEach(submission => {
+                    if (submission.verdict === "OK") {
+                        solvedProblems.add(submission.problem.contestId + "-" + submission.problem.index);
+                    }
+                });
+                return solvedProblems.size;
+            } catch (error) {
+                console.error("Error fetching total solved problems for", handle, error);
+                return 0;
+            }
+        }
+
+        async function fetchRecentSolved(handle) {
+            try {
+                const response = await fetch(SUBMISSIONS_API + handle);
+                const data = await response.json();
+                const now = Math.floor(Date.now() / 1000);
+                const past = now - 7 * 24 * 60 * 60;
+                
+                const solvedProblems = new Set();
+                data.result.forEach(submission => {
+                    if (submission.verdict === "OK" && submission.creationTimeSeconds >= past) {
+                        solvedProblems.add(submission.problem.contestId + "-" + submission.problem.index);
+                    }
+                });
+                return solvedProblems.size;
+            } catch (error) {
+                console.error("Error fetching recent solved problems for", handle, error);
+                return 0;
+            }
+        }
+
+        async function updateData() {
+            const usersData = await fetchUserData();
+            
+            if (!usersData || usersData.length === 0) {
+                console.log("No data received for users.");
+                return;
+            }
+            
+            let tableBody = "";
+            const fetchPromises = usersData.map(async (user, i) => {
+                const userInfo = users[i];
+                const [totalSolved, recentSolved] = await Promise.all([
+                    fetchTotalSolved(user.handle),
+                    fetchRecentSolved(user.handle)
+                ]);
+
+                tableBody += `
+                    <tr>
+                        <td>${userInfo.name}</td>
+                        <td>${user.handle}</td>
+                        <td>${user.rating}</td>
+                        <td>${totalSolved}</td>
+                        <td>${recentSolved}</td>
+                    </tr>
+                `;
+            });
+
+            await Promise.all(fetchPromises);
+            document.getElementById("userTable").innerHTML = tableBody;
+        }
+        
+        updateData();
+    </script>
+
+</body>
+</html>
